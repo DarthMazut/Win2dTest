@@ -1,4 +1,5 @@
-﻿using Microsoft.Graphics.Canvas.Svg;
+﻿using Microsoft.Graphics.Canvas;
+using Microsoft.Graphics.Canvas.Svg;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -9,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Win2dTest
 {
-    public class Map
+    public class Map : IRender, IDisposable
     {
         private readonly ImmutableList<Region> _regions;
 
@@ -17,7 +18,7 @@ namespace Win2dTest
         {
             _regions = ids
                 .Select(id => mapSvg.FindElementById(id))
-                .Select(e => new Region(this, e))
+                .Select(e => new Region(e))
                 .ToImmutableList();
         }
 
@@ -37,5 +38,9 @@ namespace Win2dTest
             Regions.ForEach(r => r.Deselect());
             region.Select();
         }
+
+        public void Render(CanvasDrawingSession drawingSession) => Regions.ForEach(r => r.Render(drawingSession));
+
+        public void Dispose() => Regions.ForEach(r => r.Dispose());
     }
 }

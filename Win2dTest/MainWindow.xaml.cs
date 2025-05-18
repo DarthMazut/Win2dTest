@@ -58,6 +58,11 @@ namespace Win2dTest
                         (float)_svgDestinationRect.X,
                         (float)_svgDestinationRect.Y);
                 }
+
+                if (_map is not null)
+                {
+                    _map.Render(args.DrawingSession);
+                }
             }
             catch (Exception ex)
             {
@@ -132,7 +137,7 @@ namespace Win2dTest
         {
             try
             {
-                using IRandomAccessStream svgStream = File.OpenRead(@"C:\Users\AsyncMilk\Desktop\LandTest.svg").AsRandomAccessStream();
+                using IRandomAccessStream svgStream = File.OpenRead(@"C:\Users\Ellie\Desktop\LandTest.svg").AsRandomAccessStream();
                 _svg = await CanvasSvgDocument.LoadAsync(sender.Device, svgStream);
 
                 CanvasSvgNamedElement root = _svg.Root;
