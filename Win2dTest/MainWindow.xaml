@@ -27,10 +27,12 @@
         <canvas:CanvasAnimatedControl
             x:Name="xe_Canvas"
             Grid.Row="1"
+            IsTabStop="True"
             Draw="Render"
             CreateResources="CreateResources"
             PointerReleased="PointerReleased"
             PointerMoved="PointerMoved"
-            PointerWheelChanged="WheelChanged"/>
+            PointerWheelChanged="WheelChanged"
+            KeyDown="KeyDown"/>
     </Grid>
 </Window>

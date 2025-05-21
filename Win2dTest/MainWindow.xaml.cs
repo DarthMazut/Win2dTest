@@ -18,8 +18,11 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using Win2dTest.StarterPack;
 using Windows.Foundation;
 using Windows.Storage.Streams;
+using Windows.System;
+using Windows.UI.WebUI;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -31,33 +34,25 @@ namespace Win2dTest
     /// </summary>
     public sealed partial class MainWindow : Window
     {
-        private Map? _map;
-        private CanvasSvgDocument? _svg;
-        private PointerPoint? _prevPoint;
-        private Rect _svgViewBox;
-        private Rect _svgDestinationRect = new (50, 50, 800, 800);
+        private Screen _screen;
 
         public MainWindow()
         {
             InitializeComponent();
+            _screen = new Screen
+            {
+                Viewport = new Viewport(800, 600)
+            };
+
+            _screen.Items.Add(new MyRectangle());
         }
 
         private void Render(ICanvasAnimatedControl sender, CanvasAnimatedDrawEventArgs args)
         {
             try
             {
-                DrawFps(args);
-
-                if (_svg is not null)
-                {
-                    args.DrawingSession.DrawSvg(
-                        _svg,
-                        new Size(
-                            _svgDestinationRect.Width,
-                            _svgDestinationRect.Height),
-                        (float)_svgDestinationRect.X,
-                        (float)_svgDestinationRect.Y);
-                }
+                FpsHelper.DrawFps(args);
+                _screen.Render(args.DrawingSession);
             }
             catch (Exception ex)
             {
@@ -65,62 +60,84 @@ namespace Win2dTest
             }
         }
 
-        private void PointerReleased(object sender, PointerRoutedEventArgs e)
+        private void KeyDown(object sender, KeyRoutedEventArgs e)
         {
-            if (_map is not null)
+            if (e.Key == VirtualKey.Right)
             {
-                Vector2 svgCoords = GetTransformedPointerPosition(e.GetCurrentPoint(xe_Canvas));
-                Region? region = _map.GetRegionFromCoords(svgCoords);
-                if (region is not null)
-                {
-                    _map.SelectSingleRegion(region);
-                }
-                else
-                {
-                    _map.Regions.ForEach(r => r.Deselect());
-                }
+                _screen.Viewport.X++;
+            }
+
+            if (e.Key == VirtualKey.Left)
+            {
+                _screen.Viewport.X--;
+            }
+
+            if (e.Key == VirtualKey.Up)
+            {
+                _screen.Viewport.Y--;
+            }
+
+            if (e.Key == VirtualKey.Down)
+            {
+                _screen.Viewport.Y++;
+            }
+
+            if (e.Key == VirtualKey.Subtract)
+            {
+                _screen.Viewport.Zoom -= 0.1f;
+            }
+
+            if (e.Key == VirtualKey.Add)
+            {
+                _screen.Viewport.Zoom += 0.1f;
             }
         }
 
+        private void PointerReleased(object sender, PointerRoutedEventArgs e)
+        {
+
+        }
+
+        private PointerPoint? _lastPointerPoint;
+
         private void PointerMoved(object sender, PointerRoutedEventArgs e)
         {
-            PointerPoint pointerPoint = e.GetCurrentPoint(xe_Canvas);
-            _prevPoint = pointerPoint;
+            PointerPoint currentPoint = e.GetCurrentPoint(xe_Canvas);
 
-            if (_map is null)
+            if (_lastPointerPoint is not null)
             {
-                return;
+                Vector2 moveDelta = new (
+                    (float)(_lastPointerPoint.Position.X - currentPoint.Position.X),
+                    (float)(_lastPointerPoint.Position.Y - currentPoint.Position.Y));
+
+                if (currentPoint.Properties.IsMiddleButtonPressed && moveDelta != Vector2.Zero)
+                {
+                    _screen.Viewport.X += moveDelta.X;
+                    _screen.Viewport.Y += moveDelta.Y;
+                }
             }
 
-            Vector2 svgCoords = GetTransformedPointerPosition(pointerPoint);
-
-            Region? region = _map.GetRegionFromCoords(svgCoords);
-            if (region is not null)
-            {
-                _map.HighlightSingleRegion(region);
-            }
-            else
-            {
-                _map.Regions.ForEach(r => r.ClearHighlight());
-            }
-            
+            _lastPointerPoint = currentPoint;
         }
 
         private void WheelChanged(object sender, PointerRoutedEventArgs e)
         {
+            //Take mouseCoords
+            //Translate to worldCoords
+            //Get screen coords of worldCoords
+            //Apply delta(3 - 1)
 
-        }
+            
+            Point screenPosition = e.GetCurrentPoint(xe_Canvas).Position;
+            Vector2 screenPos = new((float)screenPosition.X, (float)screenPosition.Y);
+            Vector2 globalScreenPosition = _screen.Viewport.ResolveRealPosition(screenPos);//new(screenPosition.X + _screen.Viewport.X, screenPosition.Y + _screen.Viewport.Y);
+            _screen.Viewport.Zoom += e.GetCurrentPoint(xe_Canvas).Properties.MouseWheelDelta / 1000f;
+            Vector2 screenPositionAfterZoom = _screen.Viewport.ResolveLocalPosition(globalScreenPosition);
+            Vector2 delta = screenPositionAfterZoom - screenPos;
 
-        private void DrawFps(CanvasAnimatedDrawEventArgs args)
-        {
-            TimeSpan timeSpan = args.Timing.ElapsedTime;
-            int fps = 0;
-            if (timeSpan != TimeSpan.Zero)
-            {
-                fps = (int)Math.Round(1 / (float)timeSpan.TotalSeconds);
-            }
+            _screen.Viewport.X += delta.X;
+            _screen.Viewport.Y += delta.Y;
 
-            args.DrawingSession.DrawText($"FPS: {fps}", 0, 0, Colors.Yellow);
         }
 
         private void ClearElements(object sender, RoutedEventArgs e)
@@ -130,45 +147,7 @@ namespace Win2dTest
 
         private async void CreateResources(CanvasAnimatedControl sender, CanvasCreateResourcesEventArgs args)
         {
-            try
-            {
-                using IRandomAccessStream svgStream = File.OpenRead(@"C:\Users\AsyncMilk\Desktop\LandTest.svg").AsRandomAccessStream();
-                _svg = await CanvasSvgDocument.LoadAsync(sender.Device, svgStream);
 
-                CanvasSvgNamedElement root = _svg.Root;
-                string[] viewBoxValues = root.GetStringAttribute("viewBox").Split(' ');
-                _svgViewBox = new Rect(
-                    double.Parse(viewBoxValues[0], CultureInfo.InvariantCulture),
-                    double.Parse(viewBoxValues[1], CultureInfo.InvariantCulture),
-                    double.Parse(viewBoxValues[2], CultureInfo.InvariantCulture),
-                    double.Parse(viewBoxValues[3], CultureInfo.InvariantCulture)
-                );
-
-                _map = new Map(_svg, ["R1", "R2", "R3"]);
-            }
-            catch (Exception ex)
-            {
-
-                throw;
-            }
-        }
-
-        private Vector2 GetTransformedPointerPosition(PointerPoint pointerPoint)
-        {
-            Point rawPosition = pointerPoint.Position;
-
-            if (!_svgDestinationRect.Contains(rawPosition))
-            {
-                return Vector2.Zero;
-            }
-
-            double scaleX = _svgDestinationRect.Width / _svgViewBox.Width;
-            double scaleY = _svgDestinationRect.Height / _svgViewBox.Height;
-
-            float x = (float)((rawPosition.X - _svgDestinationRect.Left) / scaleX);
-            float y = (float)((rawPosition.Y - _svgDestinationRect.Top) / scaleY);
-
-            return new Vector2(x, y);
         }
     }
 }
