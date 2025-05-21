@@ -107,7 +107,7 @@ namespace Win2dTest.StarterPack
         {
             if (ShouldRender(renderable))
             {
-                renderOrigin = ResolveLocalPosition(new(renderable.X, renderable.Y));//new Vector2((renderable.X - X) * Zoom, (renderable.Y - Y) * Zoom);
+                renderOrigin = TranslateVector(new Vector2(renderable.X, renderable.Y), VectorTranslationType.RealToDrawing, Zoom);
                 return true;
             }
 
@@ -115,9 +115,26 @@ namespace Win2dTest.StarterPack
             return false;
         }
 
-        public Vector2 ResolveLocalPosition(Vector2 screenCoords) => new(screenCoords.X - X, screenCoords.Y - Y);
+        public void ZoomToPoint(Vector2 point, float newZoom)
+        {
+            float deltaZoom = newZoom / Zoom;
+            Zoom = newZoom;
+            X = X + deltaZoom * point.X - point.X;
+            Y = Y + deltaZoom * point.Y - point.Y;
+        }
 
-        public Vector2 ResolveRealPosition(Vector2 viewportCoords) => new(viewportCoords.X + X, viewportCoords.Y + Y);
+        public Vector2 TranslateVector(Vector2 vector, VectorTranslationType translationType, float scale = 1)
+            => translationType switch
+            {
+                VectorTranslationType.RealToViewport => new Vector2(vector.X - X, vector.Y - Y),
+                VectorTranslationType.RealToDrawing => new Vector2(vector.X - X, vector.Y - Y) * scale,
+                VectorTranslationType.ViewportToReal => new Vector2(vector.X + X, vector.Y + Y),
+                VectorTranslationType.ViewportToDrawing => new Vector2(vector.X, vector.Y) * scale,
+                VectorTranslationType.DrawingToReal => new Vector2(vector.X / scale + X, vector.Y / scale + Y),
+                VectorTranslationType.DrawingToViewport => new Vector2(vector.X, vector.Y) / scale,
+                _ => throw new NotImplementedException(),
+            };
+
 
         private static void ThrowIfNegative(float value, string name = "")
         {
@@ -125,6 +142,16 @@ namespace Win2dTest.StarterPack
             {
                 throw new ArgumentOutOfRangeException(name, $"Value {name} cannot be null");
             }
+        }
+
+        public enum VectorTranslationType
+        {
+            RealToViewport,
+            RealToDrawing,
+            ViewportToReal,
+            ViewportToDrawing,
+            DrawingToReal,
+            DrawingToViewport
         }
     }
 }

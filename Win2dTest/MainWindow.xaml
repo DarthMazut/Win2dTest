@@ -16,14 +16,14 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="33"/>
+            <RowDefinition Height="0"/>
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
-        <MenuBar>
+        <!--<MenuBar>
             <MenuBarItem Title="Commands">
                 <MenuFlyoutItem Text="Clear elements" Click="ClearElements"/>
             </MenuBarItem>
-        </MenuBar>
+        </MenuBar>-->
         <canvas:CanvasAnimatedControl
             x:Name="xe_Canvas"
             Grid.Row="1"

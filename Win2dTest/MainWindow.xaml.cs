@@ -122,22 +122,11 @@ namespace Win2dTest
 
         private void WheelChanged(object sender, PointerRoutedEventArgs e)
         {
-            //Take mouseCoords
-            //Translate to worldCoords
-            //Get screen coords of worldCoords
-            //Apply delta(3 - 1)
-
-            
             Point screenPosition = e.GetCurrentPoint(xe_Canvas).Position;
-            Vector2 screenPos = new((float)screenPosition.X, (float)screenPosition.Y);
-            Vector2 globalScreenPosition = _screen.Viewport.ResolveRealPosition(screenPos);//new(screenPosition.X + _screen.Viewport.X, screenPosition.Y + _screen.Viewport.Y);
-            _screen.Viewport.Zoom += e.GetCurrentPoint(xe_Canvas).Properties.MouseWheelDelta / 1000f;
-            Vector2 screenPositionAfterZoom = _screen.Viewport.ResolveLocalPosition(globalScreenPosition);
-            Vector2 delta = screenPositionAfterZoom - screenPos;
-
-            _screen.Viewport.X += delta.X;
-            _screen.Viewport.Y += delta.Y;
-
+            Vector2 cursor = new((float)screenPosition.X, (float)screenPosition.Y);
+            //cursor = _screen.Viewport.TranslateVector(cursor, Viewport.VectorTranslationType.DrawingToViewport, _screen.Viewport.Zoom);
+            float newZoom = _screen.Viewport.Zoom + e.GetCurrentPoint(xe_Canvas).Properties.MouseWheelDelta / 1000f;
+            _screen.Viewport.ZoomToPoint(cursor, newZoom);
         }
 
         private void ClearElements(object sender, RoutedEventArgs e)
