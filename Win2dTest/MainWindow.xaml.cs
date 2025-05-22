@@ -42,6 +42,10 @@ namespace Win2dTest
             _screen = new Screen
             {
                 Viewport = new Viewport(800, 600)
+                {
+                    DrawingOffsetX = 100,
+                    DrawingOffsetY = 50
+                }
             };
 
             _screen.Items.Add(new MyRectangle(100, 100)
@@ -136,10 +140,9 @@ namespace Win2dTest
                     (float)(_lastPointerPoint.Position.X - currentPoint.Position.X),
                     (float)(_lastPointerPoint.Position.Y - currentPoint.Position.Y));
 
-                if (currentPoint.Properties.IsMiddleButtonPressed && moveDelta != Vector2.Zero)
+                if (currentPoint.Properties.IsMiddleButtonPressed)
                 {
-                    _screen.Viewport.X += moveDelta.X / _screen.Viewport.Zoom;
-                    _screen.Viewport.Y += moveDelta.Y / _screen.Viewport.Zoom;
+                    _screen.Viewport.PanByDrawingVector(moveDelta);
                 }
             }
 
@@ -149,7 +152,7 @@ namespace Win2dTest
         private void WheelChanged(object sender, PointerRoutedEventArgs e)
         {
             Point screenPosition = e.GetCurrentPoint(xe_Canvas).Position;
-            Vector2 cursor = new((float)screenPosition.X, (float)screenPosition.Y);
+            System.Drawing.PointF cursor = new((float)screenPosition.X, (float)screenPosition.Y);
             // zoomFactor = 1.1
             // stepSize = 120
             float newZoom = _screen.Viewport.Zoom * (float)Math.Pow(1.1, e.GetCurrentPoint(xe_Canvas).Properties.MouseWheelDelta / 120);

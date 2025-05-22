@@ -40,10 +40,10 @@ namespace Win2dTest
 
         public Color BorderColor { get; set; }
 
-        public void Render(CanvasDrawingSession drawingSession, Vector2 origin, float scale)
+        public void Render(CanvasDrawingSession drawingSession, System.Drawing.PointF origin, float scale)
         {
             //drawingSession.DrawRectangle(origin.X, origin.Y, Width * scale, Height * scale, BorderColor);
-            drawingSession.DrawCircle(origin + new Vector2(Width / 2 * scale), Width / 2 * scale, BorderColor);
+            drawingSession.DrawCircle(new Vector2(origin.X, origin.Y) + new Vector2(Width / 2 * scale), Width / 2 * scale, BorderColor);
         }
     }
 }
