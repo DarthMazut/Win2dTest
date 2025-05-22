@@ -8,6 +8,7 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
+using Windows.Foundation;
 
 namespace Win2dTest.StarterPack
 {
@@ -19,7 +20,7 @@ namespace Win2dTest.StarterPack
             int fps = 0;
             if (timeSpan != TimeSpan.Zero)
             {
-                fps = (int)Math.Round(1 / (float)timeSpan.TotalSeconds);
+                fps = (int)Math.Round(1 / timeSpan.TotalSeconds);
             }
 
             args.DrawingSession.DrawText($"FPS: {fps}", 0, 0, Colors.Yellow);
@@ -90,6 +91,7 @@ namespace Win2dTest.StarterPack
             {
                 if (ResolveRenderOrigin(renderable, out Vector2 renderOrigin))
                 {
+                    using CanvasActiveLayer layer = drawingSession.CreateLayer(1, new Rect(0, 0, Width, Height));
                     renderable.Render(drawingSession, renderOrigin, Zoom);
                 }
             }
@@ -115,12 +117,24 @@ namespace Win2dTest.StarterPack
             return false;
         }
 
+        // Pan(Vector2 panningVector)
+
+        // ZoomByFactorToPoint()
+        // ZoomByDeltaToPoint()
+
+        // ZoomToValue(float newZoom, Vector2 point = default)
+        // ZoomByFactor(float zoomFactor, Vector2 point = default)
+        // ZoomByDelta(int steps, Vector2 point = default, float zoomFactor = 1.1, int stepSize = 120)
+
         public void ZoomToPoint(Vector2 point, float newZoom)
         {
             float deltaZoom = newZoom / Zoom;
+            Vector2 viewPortPoint = TranslateVector(point, VectorTranslationType.DrawingToViewport, Zoom);
+
             Zoom = newZoom;
-            X = X + deltaZoom * point.X - point.X;
-            Y = Y + deltaZoom * point.Y - point.Y;
+            X += viewPortPoint.X - viewPortPoint.X / deltaZoom;
+            Y += viewPortPoint.Y - viewPortPoint.Y / deltaZoom;
+
         }
 
         public Vector2 TranslateVector(Vector2 vector, VectorTranslationType translationType, float scale = 1)

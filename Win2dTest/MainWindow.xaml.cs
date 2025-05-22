@@ -44,7 +44,33 @@ namespace Win2dTest
                 Viewport = new Viewport(800, 600)
             };
 
-            _screen.Items.Add(new MyRectangle());
+            _screen.Items.Add(new MyRectangle(100, 100)
+            {
+                X = 100,
+                Y = 100,
+                BorderColor = Colors.Blue
+            });
+
+            _screen.Items.Add(new MyRectangle(100, 100)
+            {
+                X = 230,
+                Y = 100,
+                BorderColor = Colors.Green
+            });
+
+            _screen.Items.Add(new MyRectangle(100, 100)
+            {
+                X = 100,
+                Y = 230,
+                BorderColor = Colors.Yellow
+            });
+
+            _screen.Items.Add(new MyRectangle(100, 100)
+            {
+                X = 230,
+                Y = 230,
+                BorderColor = Colors.Red
+            });
         }
 
         private void Render(ICanvasAnimatedControl sender, CanvasAnimatedDrawEventArgs args)
@@ -112,8 +138,8 @@ namespace Win2dTest
 
                 if (currentPoint.Properties.IsMiddleButtonPressed && moveDelta != Vector2.Zero)
                 {
-                    _screen.Viewport.X += moveDelta.X;
-                    _screen.Viewport.Y += moveDelta.Y;
+                    _screen.Viewport.X += moveDelta.X / _screen.Viewport.Zoom;
+                    _screen.Viewport.Y += moveDelta.Y / _screen.Viewport.Zoom;
                 }
             }
 
@@ -124,8 +150,9 @@ namespace Win2dTest
         {
             Point screenPosition = e.GetCurrentPoint(xe_Canvas).Position;
             Vector2 cursor = new((float)screenPosition.X, (float)screenPosition.Y);
-            //cursor = _screen.Viewport.TranslateVector(cursor, Viewport.VectorTranslationType.DrawingToViewport, _screen.Viewport.Zoom);
-            float newZoom = _screen.Viewport.Zoom + e.GetCurrentPoint(xe_Canvas).Properties.MouseWheelDelta / 1000f;
+            // zoomFactor = 1.1
+            // stepSize = 120
+            float newZoom = _screen.Viewport.Zoom * (float)Math.Pow(1.1, e.GetCurrentPoint(xe_Canvas).Properties.MouseWheelDelta / 120);
             _screen.Viewport.ZoomToPoint(cursor, newZoom);
         }
 
