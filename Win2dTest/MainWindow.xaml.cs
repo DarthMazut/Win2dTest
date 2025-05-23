@@ -34,17 +34,29 @@ namespace Win2dTest
     /// </summary>
     public sealed partial class MainWindow : Window
     {
+        private readonly InputManager _inputManager;
         private Screen _screen;
 
         public MainWindow()
         {
             InitializeComponent();
+            _inputManager = new InputManager(xe_Canvas);
             _screen = new Screen
             {
                 Viewport = new Viewport(800, 600)
                 {
                     DrawingOffsetX = 100,
-                    DrawingOffsetY = 50
+                    DrawingOffsetY = 50,
+                }
+            };
+
+            _screen.Viewport.Diagnostics.Frame = new ViewportFrame()
+            { 
+                StrokeStyle = new CanvasStrokeStyle()
+                {
+                    DashCap = CanvasCapStyle.Triangle,
+                    DashStyle = CanvasDashStyle.Dash,
+                    CustomDashStyle = [15, 15]
                 }
             };
 
@@ -86,6 +98,37 @@ namespace Win2dTest
             try
             {
                 FpsHelper.DrawFps(args);
+
+                foreach (InputAction inputAction in _inputManager.DequeueInputs())
+                {
+                    if (inputAction.Type == InputActionType.PointerReleased)
+                    {
+                        Vector2 realClickPosition = _screen.Viewport.TranslatePoint(inputAction.PointerReleased.Position, Viewport.TranslationType.DrawingToReal);
+                        foreach (SelectableItem item in _screen.Items.Where(i => i is SelectableItem))
+                        {
+                            item.IsSelected = item.ContainsPoint(realClickPosition);
+                        }
+                    }
+
+                    if (inputAction.Type == InputActionType.PointerMoved)
+                    {
+                        if (inputAction.PointerMoved.Properties.IsMiddleButtonPressed)
+                        {
+                            _screen.Viewport.Pan(inputAction.PointerMoved.MoveDelta);
+                        }
+                        else if (inputAction.PointerMoved.Properties.IsLeftButtonPressed)
+                        {
+                            List<SelectableItem> selectedItems = _screen.Items.Where(i => (i as SelectableItem)?.IsSelected == true).Cast<SelectableItem>().ToList();
+                            Vector2 realMoveDelta = _screen.Viewport.TranslateVector(inputAction.PointerMoved.MoveDelta, Viewport.TranslationType.DrawingToReal);
+                            selectedItems.ForEach(i =>
+                            {
+                                i.X -= realMoveDelta.X;
+                                i.Y -= realMoveDelta.Y;
+                            });
+                        }
+                    }
+                }
+
                 _screen.Render(args.DrawingSession);
             }
             catch (Exception ex)
@@ -98,78 +141,33 @@ namespace Win2dTest
         {
             if (e.Key == VirtualKey.Right)
             {
-                _screen.Viewport.Pan(new Vector2(-1, 0), Viewport.CoordinatesType.Viewport);
+                _screen.Viewport.Pan(new Vector2(-1, 0), Viewport.TranslationType.None);
             }
 
             if (e.Key == VirtualKey.Left)
             {
-                _screen.Viewport.Pan(new Vector2(1, 0), Viewport.CoordinatesType.Viewport);
+                _screen.Viewport.Pan(new Vector2(1, 0), Viewport.TranslationType.None);
             }
 
             if (e.Key == VirtualKey.Up)
             {
-                _screen.Viewport.Pan(new Vector2(0, 1), Viewport.CoordinatesType.Viewport);
+                _screen.Viewport.Pan(new Vector2(0, 1), Viewport.TranslationType.None);
             }
 
             if (e.Key == VirtualKey.Down)
             {
-                _screen.Viewport.Pan(new Vector2(0, -1), Viewport.CoordinatesType.Viewport);
+                _screen.Viewport.Pan(new Vector2(0, -1), Viewport.TranslationType.None);
             }
 
             if (e.Key == VirtualKey.Subtract)
             {
-                _screen.Viewport.ZoomByFactor(0.9f, default, Viewport.CoordinatesType.Viewport);
+                _screen.Viewport.ZoomByFactor(0.9f, default, Viewport.TranslationType.None);
             }
 
             if (e.Key == VirtualKey.Add)
             {
-                _screen.Viewport.ZoomByFactor(1.1f, default, Viewport.CoordinatesType.Viewport);
+                _screen.Viewport.ZoomByFactor(1.1f, default, Viewport.TranslationType.None);
             }
-        }
-
-        private void PointerReleased(object sender, PointerRoutedEventArgs e)
-        {
-            PointerPoint pointerPoint = e.GetCurrentPoint(xe_Canvas);
-            Point pointerPosition = pointerPoint.Position;
-            Vector2 clickPosition = new Vector2((float)pointerPosition.X, (float)pointerPosition.Y);
-            Vector2 realClickPosition = _screen.Viewport.TranslatePoint(clickPosition, Viewport.CoordinatesType.Drawing, Viewport.CoordinatesType.Real);
-
-            foreach (SelectableItem item in _screen.Items.Where(i => i is SelectableItem))
-            {
-                item.IsSelected = item.ContainsPoint(realClickPosition);
-
-            }
-        }
-
-        private PointerPoint? _lastPointerPoint;
-
-        private void PointerMoved(object sender, PointerRoutedEventArgs e)
-        {
-            PointerPoint currentPoint = e.GetCurrentPoint(xe_Canvas);
-
-            if (_lastPointerPoint is not null)
-            {
-                Vector2 moveDelta = new (
-                    (float)(_lastPointerPoint.Position.X - currentPoint.Position.X),
-                    (float)(_lastPointerPoint.Position.Y - currentPoint.Position.Y));
-
-                if (currentPoint.Properties.IsMiddleButtonPressed)
-                {
-                    _screen.Viewport.Pan(moveDelta);
-                }
-                else if (currentPoint.Properties.IsLeftButtonPressed)
-                {
-                    List<SelectableItem> selectedItems = _screen.Items.Where(i => (i as SelectableItem)?.IsSelected == true).Cast<SelectableItem>().ToList();
-                    Vector2 realMoveDelta = _screen.Viewport.TranslateVector(moveDelta, Viewport.CoordinatesType.Drawing, Viewport.CoordinatesType.Real);
-                    selectedItems.ForEach(i =>
-                    {
-                        i.X -= realMoveDelta.X;
-                        i.Y -= realMoveDelta.Y;
-                    });
-                }
-            }
-
-            _lastPointerPoint = currentPoint;
         }
 
         private void WheelChanged(object sender, PointerRoutedEventArgs e)

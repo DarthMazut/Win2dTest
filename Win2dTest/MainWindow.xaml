@@ -30,8 +30,6 @@
             IsTabStop="True"
             Draw="Render"
             CreateResources="CreateResources"
-            PointerReleased="PointerReleased"
-            PointerMoved="PointerMoved"
             PointerWheelChanged="WheelChanged"
             KeyDown="KeyDown"/>
     </Grid>
