@@ -48,31 +48,35 @@ namespace Win2dTest
                 }
             };
 
-            _screen.Items.Add(new MyRectangle(100, 100)
+            _screen.Items.Add(new SelectableItem()
             {
                 X = 100,
                 Y = 100,
-                BorderColor = Colors.Blue
+                FillColor = Colors.BlueViolet,
+                BorderColor = Colors.Red
             });
 
-            _screen.Items.Add(new MyRectangle(100, 100)
+            _screen.Items.Add(new SelectableItem()
             {
-                X = 230,
+                X = 220,
                 Y = 100,
-                BorderColor = Colors.Green
+                FillColor = Colors.BlueViolet,
+                BorderColor = Colors.Red
             });
 
-            _screen.Items.Add(new MyRectangle(100, 100)
+            _screen.Items.Add(new SelectableItem()
             {
                 X = 100,
-                Y = 230,
-                BorderColor = Colors.Yellow
+                Y = 220,
+                FillColor = Colors.BlueViolet,
+                BorderColor = Colors.Red
             });
 
-            _screen.Items.Add(new MyRectangle(100, 100)
+            _screen.Items.Add(new SelectableItem()
             {
-                X = 230,
-                Y = 230,
+                X = 220,
+                Y = 220,
+                FillColor = Colors.BlueViolet,
                 BorderColor = Colors.Red
             });
         }
@@ -94,38 +98,47 @@ namespace Win2dTest
         {
             if (e.Key == VirtualKey.Right)
             {
-                _screen.Viewport.X++;
+                _screen.Viewport.Pan(new Vector2(-1, 0), Viewport.CoordinatesType.Viewport);
             }
 
             if (e.Key == VirtualKey.Left)
             {
-                _screen.Viewport.X--;
+                _screen.Viewport.Pan(new Vector2(1, 0), Viewport.CoordinatesType.Viewport);
             }
 
             if (e.Key == VirtualKey.Up)
             {
-                _screen.Viewport.Y--;
+                _screen.Viewport.Pan(new Vector2(0, 1), Viewport.CoordinatesType.Viewport);
             }
 
             if (e.Key == VirtualKey.Down)
             {
-                _screen.Viewport.Y++;
+                _screen.Viewport.Pan(new Vector2(0, -1), Viewport.CoordinatesType.Viewport);
             }
 
             if (e.Key == VirtualKey.Subtract)
             {
-                _screen.Viewport.Zoom -= 0.1f;
+                _screen.Viewport.ZoomByFactor(0.9f, default, Viewport.CoordinatesType.Viewport);
             }
 
             if (e.Key == VirtualKey.Add)
             {
-                _screen.Viewport.Zoom += 0.1f;
+                _screen.Viewport.ZoomByFactor(1.1f, default, Viewport.CoordinatesType.Viewport);
             }
         }
 
         private void PointerReleased(object sender, PointerRoutedEventArgs e)
         {
+            PointerPoint pointerPoint = e.GetCurrentPoint(xe_Canvas);
+            Point pointerPosition = pointerPoint.Position;
+            Vector2 clickPosition = new Vector2((float)pointerPosition.X, (float)pointerPosition.Y);
+            Vector2 realClickPosition = _screen.Viewport.TranslatePoint(clickPosition, Viewport.CoordinatesType.Drawing, Viewport.CoordinatesType.Real);
 
+            foreach (SelectableItem item in _screen.Items.Where(i => i is SelectableItem))
+            {
+                item.IsSelected = item.ContainsPoint(realClickPosition);
+
+            }
         }
 
         private PointerPoint? _lastPointerPoint;
@@ -142,7 +155,17 @@ namespace Win2dTest
 
                 if (currentPoint.Properties.IsMiddleButtonPressed)
                 {
-                    _screen.Viewport.PanByDrawingVector(moveDelta);
+                    _screen.Viewport.Pan(moveDelta);
+                }
+                else if (currentPoint.Properties.IsLeftButtonPressed)
+                {
+                    List<SelectableItem> selectedItems = _screen.Items.Where(i => (i as SelectableItem)?.IsSelected == true).Cast<SelectableItem>().ToList();
+                    Vector2 realMoveDelta = _screen.Viewport.TranslateVector(moveDelta, Viewport.CoordinatesType.Drawing, Viewport.CoordinatesType.Real);
+                    selectedItems.ForEach(i =>
+                    {
+                        i.X -= realMoveDelta.X;
+                        i.Y -= realMoveDelta.Y;
+                    });
                 }
             }
 
@@ -151,17 +174,14 @@ namespace Win2dTest
 
         private void WheelChanged(object sender, PointerRoutedEventArgs e)
         {
-            Point screenPosition = e.GetCurrentPoint(xe_Canvas).Position;
-            System.Drawing.PointF cursor = new((float)screenPosition.X, (float)screenPosition.Y);
-            // zoomFactor = 1.1
-            // stepSize = 120
-            float newZoom = _screen.Viewport.Zoom * (float)Math.Pow(1.1, e.GetCurrentPoint(xe_Canvas).Properties.MouseWheelDelta / 120);
-            _screen.Viewport.ZoomToPoint(cursor, newZoom);
+            PointerPoint pointer = e.GetCurrentPoint(xe_Canvas);
+            Vector2 cursor = new((float)pointer.Position.X, (float)pointer.Position.Y);
+            _screen.Viewport.ZoomByDelta(pointer.Properties.MouseWheelDelta, cursor);
         }
 
         private void ClearElements(object sender, RoutedEventArgs e)
         {
-
+            
         }
 
         private async void CreateResources(CanvasAnimatedControl sender, CanvasCreateResourcesEventArgs args)

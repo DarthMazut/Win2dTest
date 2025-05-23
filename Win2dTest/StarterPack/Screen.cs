@@ -51,7 +51,7 @@ namespace Win2dTest.StarterPack
 
         public float Y { get; }
 
-        public void Render(CanvasDrawingSession drawingSession, PointF origin, float scale);
+        public void Render(CanvasDrawingSession drawingSession, Vector2 origin, float scale);
     }
 
     public class Viewport
@@ -89,7 +89,7 @@ namespace Win2dTest.StarterPack
 
             foreach (IRenderable renderable in renderables.Where(ShouldRender))
             {
-                if (ResolveRenderOrigin(renderable, out PointF renderOrigin))
+                if (ResolveRenderOrigin(renderable, out Vector2 renderOrigin))
                 {
                     using CanvasActiveLayer layer = drawingSession.CreateLayer(1, new Rect(DrawingOffsetX, DrawingOffsetY, DrawingWidth, DrawingHeight));
                     renderable.Render(drawingSession, renderOrigin, Zoom);
@@ -105,11 +105,11 @@ namespace Win2dTest.StarterPack
             return viewportRect.IntersectsWith(renderableRect);
         }
 
-        public bool ResolveRenderOrigin(IRenderable renderable, out PointF renderOrigin)
+        public bool ResolveRenderOrigin(IRenderable renderable, out Vector2 renderOrigin)
         {
             if (ShouldRender(renderable))
             {
-                renderOrigin = TranslatePoint(new PointF(renderable.X, renderable.Y), TranslationType.RealToDrawing, Zoom);
+                renderOrigin = TranslatePoint(new Vector2(renderable.X, renderable.Y), CoordinatesType.Real, CoordinatesType.Drawing);
                 return true;
             }
 
@@ -117,62 +117,114 @@ namespace Win2dTest.StarterPack
             return false;
         }
 
-        public void PanByDrawingVector(Vector2 panningVector)
+        public void Pan(Vector2 panningVector, CoordinatesType coordsType = CoordinatesType.Drawing)
         {
-            Vector2 translatedVector = TranslateVector(panningVector, TranslationType.DrawingToViewport, Zoom);
+            Vector2 translatedVector = TranslateVector(panningVector, coordsType, CoordinatesType.Viewport);
 
             X += translatedVector.X;
             Y += translatedVector.Y;
         }
 
-        public void PanByRealVector(Vector2 panningVector)
-        {
-            X += panningVector.X;
-            Y += panningVector.Y;
-        }
-
-        // ZoomByFactorToPoint()
-        // ZoomByDeltaToPoint()
-
-        // ZoomToValue(float newZoom, Vector2 point = default)
-        // ZoomByFactor(float zoomFactor, Vector2 point = default)
-        // ZoomByDelta(int steps, Vector2 point = default, float zoomFactor = 1.1, int stepSize = 120)
-
-        public void ZoomToPoint(PointF point, float newZoom)
+        public void ZoomToValue(float newZoom, Vector2 point = default, CoordinatesType coordsType = CoordinatesType.Drawing)
         {
             float deltaZoom = newZoom / Zoom;
-            PointF viewPortPoint = TranslatePoint(point, TranslationType.DrawingToViewport, Zoom);
+            Vector2 viewportPoint = TranslatePoint(point, coordsType, CoordinatesType.Viewport);
 
             Zoom = newZoom;
-            X += viewPortPoint.X - viewPortPoint.X / deltaZoom;
-            Y += viewPortPoint.Y - viewPortPoint.Y / deltaZoom;
-
+            X += viewportPoint.X - viewportPoint.X / deltaZoom;
+            Y += viewportPoint.Y - viewportPoint.Y / deltaZoom;
         }
 
-        public Vector2 TranslateVector(Vector2 vector, TranslationType translationType, float scale = 1)
-            => translationType switch
-            {
-                TranslationType.RealToViewport => vector,
-                TranslationType.RealToDrawing => vector * scale,
-                TranslationType.ViewportToReal => vector,
-                TranslationType.ViewportToDrawing => vector * scale,
-                TranslationType.DrawingToReal => vector / scale,
-                TranslationType.DrawingToViewport => vector / scale,
-                _ => throw new NotImplementedException(),
-            };
+        public void ZoomByFactor(float zoomFactor, Vector2 point = default, CoordinatesType coordsType = CoordinatesType.Drawing)
+        {
+            Vector2 viewportPoint = TranslatePoint(point, coordsType, CoordinatesType.Viewport);
 
-        public PointF TranslatePoint(PointF point, TranslationType translationType, float scale = 1)
-            => translationType switch
-            {
-                TranslationType.RealToViewport => new PointF(point.X - X, point.Y - Y),
-                TranslationType.RealToDrawing => new PointF((point.X - X) * scale + DrawingOffsetX, (point.Y - Y) * scale + DrawingOffsetY),
-                TranslationType.ViewportToReal => new PointF(point.X + X, point.Y + Y),
-                TranslationType.ViewportToDrawing => new PointF(point.X * scale + DrawingOffsetX, point.Y * scale + DrawingOffsetY),
-                TranslationType.DrawingToReal => new PointF((point.X - DrawingOffsetX) / scale + X, (point.Y - DrawingOffsetY) / scale + Y),
-                TranslationType.DrawingToViewport => new PointF((point.X - DrawingOffsetX) / scale, (point.Y - DrawingOffsetY) / scale),
-                _ => throw new NotImplementedException(),
-            };
+            Zoom *= zoomFactor;
+            X += viewportPoint.X - viewportPoint.X / zoomFactor;
+            Y += viewportPoint.Y - viewportPoint.Y / zoomFactor;
+        }
 
+        public void ZoomByDelta(int steps, Vector2 point = default, CoordinatesType coordsType = CoordinatesType.Drawing, float zoomFactor = 1.1f, int stepSize = 120)
+        {
+            float deltaZoom = (float)Math.Pow(zoomFactor, steps / stepSize);
+            ZoomByFactor(deltaZoom, point, coordsType);
+        }
+
+        public Vector2 TranslateVector(Vector2 vector, CoordinatesType inputCoordsType, CoordinatesType outputCoordsType)
+        {
+            if (inputCoordsType == CoordinatesType.Real)
+            {
+                return outputCoordsType switch
+                {
+                    CoordinatesType.Real => vector,
+                    CoordinatesType.Viewport => vector,
+                    CoordinatesType.Drawing => vector * Zoom,
+                    _ => throw new NotImplementedException(),
+                };
+            }
+
+            if (inputCoordsType == CoordinatesType.Viewport)
+            {
+                return outputCoordsType switch
+                {
+                    CoordinatesType.Real => vector,
+                    CoordinatesType.Viewport => vector,
+                    CoordinatesType.Drawing => vector * Zoom,
+                    _ => throw new NotImplementedException(),
+                };
+            }
+
+            if (inputCoordsType == CoordinatesType.Drawing)
+            {
+                return outputCoordsType switch
+                {
+                    CoordinatesType.Real => vector / Zoom,
+                    CoordinatesType.Viewport => vector / Zoom,
+                    CoordinatesType.Drawing => vector,
+                    _ => throw new NotImplementedException(),
+                };
+            }
+
+            throw new NotImplementedException();
+        }
+
+        public Vector2 TranslatePoint(Vector2 point, CoordinatesType inputCoordsType, CoordinatesType outputCoordsType)
+        {
+            if (inputCoordsType == CoordinatesType.Real)
+            {
+                return outputCoordsType switch
+                {
+                    CoordinatesType.Real => point,
+                    CoordinatesType.Viewport => new Vector2(point.X - X, point.Y - Y),
+                    CoordinatesType.Drawing => new Vector2(point.X - X, point.Y - Y) * Zoom + new Vector2(DrawingOffsetX, DrawingOffsetY),
+                    _ => throw new NotImplementedException(),
+                };
+            }
+
+            if (inputCoordsType == CoordinatesType.Viewport)
+            {
+                return outputCoordsType switch
+                {
+                    CoordinatesType.Real => new Vector2(point.X + X, point.Y + Y),
+                    CoordinatesType.Viewport => point,
+                    CoordinatesType.Drawing => new Vector2(point.X, point.Y) * Zoom + new Vector2(DrawingOffsetX, DrawingOffsetY),
+                    _ => throw new NotImplementedException(),
+                };
+            }
+            
+            if (inputCoordsType == CoordinatesType.Drawing)
+            {
+                return outputCoordsType switch
+                {
+                    CoordinatesType.Real => new Vector2((point.X - DrawingOffsetX) / Zoom + X, (point.Y - DrawingOffsetY) / Zoom + Y),
+                    CoordinatesType.Viewport => new Vector2(point.X - DrawingOffsetX, point.Y - DrawingOffsetY) / Zoom,
+                    CoordinatesType.Drawing => point,
+                    _ => throw new NotImplementedException(),
+                };
+            }
+
+            throw new NotImplementedException();
+        }
 
         private static void ThrowIfNegative(float value, string name = "")
         {
@@ -182,14 +234,11 @@ namespace Win2dTest.StarterPack
             }
         }
 
-        public enum TranslationType
+        public enum CoordinatesType
         {
-            RealToViewport,
-            RealToDrawing,
-            ViewportToReal,
-            ViewportToDrawing,
-            DrawingToReal,
-            DrawingToViewport
+            Real,
+            Viewport,
+            Drawing
         }
     }
 }
